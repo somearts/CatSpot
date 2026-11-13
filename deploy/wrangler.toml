@@ -1,0 +1,12 @@
+name = "golake-catspot"
+compatibility_date = "2026-09-26"
+
+routes = [
+  { pattern = "golake.app/catspot", zone_name = "golake.app" },
+  { pattern = "golake.app/catspot/*", zone_name = "golake.app" },
+]
+
+[assets]
+directory = "./public"
+html_handling = "auto-trailing-slash"
+not_found_handling = "none"

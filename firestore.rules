@@ -1,0 +1,46 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isCatType(v) {
+      return v in ['ginger', 'black', 'white', 'grey', 'tabby', 'calico', 'mixed', 'other'];
+    }
+    function isFriendliness(v) {
+      return v == 'friendly' || v == 'not_friendly';
+    }
+    function validPublic(data) {
+      return data.keys().hasOnly(['catType', 'friendliness', 'createdAt', 'publicLatitude', 'publicLongitude', 'locationAccuracy', 'approximateArea', 'schemaVersion', 'geohash'])
+        && isCatType(data.catType)
+        && isFriendliness(data.friendliness)
+        && data.createdAt is timestamp
+        && data.publicLatitude is number && data.publicLatitude >= -90 && data.publicLatitude <= 90
+        && data.publicLongitude is number && data.publicLongitude >= -180 && data.publicLongitude <= 180
+        && data.locationAccuracy is number && data.locationAccuracy >= 0 && data.locationAccuracy <= 1000
+        && data.approximateArea is string && data.approximateArea.size() <= 200
+        && data.schemaVersion == 1
+        && data.geohash is string && data.geohash.size() >= 1 && data.geohash.size() <= 12;
+    }
+
+    match /sightings/{id} {
+      allow read: if true;
+      allow create: if validPublic(request.resource.data)
+        && request.resource.data.createdAt == request.time;
+      allow update, delete: if false;
+    }
+
+    // Private original coordinates: write-only from clients. No public reads.
+    match /sightingPrivate/{id} {
+      allow read: if false;
+      allow create: if request.resource.data.keys().hasOnly(['sightingId', 'latitude', 'longitude', 'accuracy', 'createdAt', 'schemaVersion'])
+        && request.resource.data.sightingId is string
+        && request.resource.data.latitude is number && request.resource.data.latitude >= -90 && request.resource.data.latitude <= 90
+        && request.resource.data.longitude is number && request.resource.data.longitude >= -180 && request.resource.data.longitude <= 180
+        && request.resource.data.accuracy is number && request.resource.data.accuracy >= 0 && request.resource.data.accuracy <= 1000
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.schemaVersion == 1
+        && request.resource.data.createdAt == request.time;
+      allow update, delete: if false;
+    }
+  }
+}
